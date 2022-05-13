@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/susatthi/flutter-sample-ci/branch/main/graph/badge.svg?token=V1LG8THEZ5)](https://codecov.io/gh/susatthi/flutter-sample-ci)
+
 # flutter_sample_ci
 
 A new Flutter project.
