@@ -1,7 +1,8 @@
-# CI の結果を Slack に通知する
+# Androidをリリースビルドする
 # コードフォーマット => 静的解析 => テスト => レポート => Codecovへ送信
+# => Androidのリリースビルド
 # => Slackに通知
-name: Flutter CI Notify Slack
+name: Flutter CI Build Android
 
 # ワークフロー起動条件を定義する
 on:
@@ -79,6 +80,42 @@ jobs:
           flags: unittests
           verbose: true
 
+  # Android ビルドジョブ
+  flutter_build_android:
+    name: Flutter Build for Android
+    # テストジョブが成功したら実行する
+    needs:
+      - flutter_test
+    # ジョブを実行するOS
+    runs-on: ubuntu-latest
+    # タイムアウト時間（分）
+    timeout-minutes: 10
+    # ジョブの手順
+    steps:
+      # ソースコードをチェックアウト
+      - name: Checkout
+        uses: actions/checkout@v3
+      # fvm のバージョンとチャネルを環境変数に設定する
+      - name: Check fvm
+        uses: kuhnroyal/flutter-fvm-config-action@v1
+      # Flutter SDK の設定
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          # バージョンとチャネルは fvm の値を使う
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          # 次回以降起動を速くするためにキャッシュしておく
+          cache: true
+          cache-key: flutter
+          cache-path: ${{ runner.tool_cache }}/flutter
+      # flutter pub get を実行
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      # リリースビルドを実行
+      - name: Build for Android
+        run: flutter build appbundle -t lib/main.dart --release
+
   # Slack通知ジョブ
   notify_slack:
     name: Notify to Slack
@@ -87,6 +124,7 @@ jobs:
     # すべてのジョブが終了したら実行する
     needs:
       - flutter_test
+      - flutter_build_android
     # ジョブを実行するOS
     runs-on: ubuntu-latest
     # ここで環境変数を設定すると steps 配下で使えるようになる
@@ -101,7 +139,7 @@ jobs:
         if: ${{ !contains(needs.*.result, 'failure') }}
         uses: rtCamp/action-slack-notify@v2
         env:
-          SLACK_TITLE: SUCCESS TEST!
+          SLACK_TITLE: SUCCESS TEST AND BUILD!
           SLACK_COLOR: good
       # テストに失敗したとき
       - name: Notify Failure Test
@@ -109,4 +147,11 @@ jobs:
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_TITLE: FAILURE TEST ...
+          SLACK_COLOR: danger
+      # Android ビルドに失敗したとき
+      - name: Notify Failure Build for Android
+        if: ${{ needs.flutter_build_android.result == 'failure' }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_TITLE: FAILURE BUILD ANDROID ...
           SLACK_COLOR: danger
