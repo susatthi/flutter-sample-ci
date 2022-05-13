@@ -57,6 +57,7 @@ jobs:
         run: flutter analyze
       # テストを実行
       # あとでテスト結果を GitHub Actions 上に表示するので log に出力する
+      # あとでカバレッジ結果をCodecovに送信するのでカバレッジありで実行する
       - name: Run Flutter Test
         run: flutter test --machine --coverage > test-report.log
       # テスト結果を GitHub Actions に表示する
