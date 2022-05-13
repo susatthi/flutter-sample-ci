@@ -91,6 +91,8 @@ jobs:
     runs-on: ubuntu-latest
     # ここで環境変数を設定すると steps 配下で使えるようになる
     env:
+      SLACK_USERNAME: GitHub Actions
+      SLACK_ICON: https://raw.githubusercontent.com/github/explore/2c7e603b797535e5ad8b4beb575ab3b7354666e1/topics/actions/actions.png
       SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
     # ジョブの手順
     steps:
