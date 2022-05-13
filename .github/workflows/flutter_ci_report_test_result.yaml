@@ -1,0 +1,70 @@
+# テスト結果を GitHub Actions 上に表示する
+# コードフォーマット => 静的解析 => テスト => レポート
+name: Flutter CI Report Test Result
+
+# ワークフロー起動条件を定義する
+on:
+  # プルリクエストが作成 or 更新された時
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+  # main ブランチに push された時
+  push:
+    branches:
+      - main
+
+# ジョブを定義する
+# 各ジョブはそれぞれまったく別々の環境で実行される
+jobs:
+  # 最初に実行するテストジョブ
+  flutter_test:
+    # 表示名の定義
+    name: Flutter Test
+    # ジョブを実行するOS
+    runs-on: ubuntu-latest
+    # タイムアウト時間（分）
+    timeout-minutes: 10
+    # ジョブの手順
+    steps:
+      # ソースコードをチェックアウト
+      - name: Checkout
+        uses: actions/checkout@v3
+      # fvm のバージョンとチャネルを環境変数に設定する
+      - name: Check fvm
+        uses: kuhnroyal/flutter-fvm-config-action@v1
+      # Flutter SDK の設定
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          # バージョンとチャネルは fvm の値を使う
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          # 次回以降起動を速くするためにキャッシュしておく
+          cache: true
+          cache-key: flutter
+          cache-path: ${{ runner.tool_cache }}/flutter
+      # flutter pub get を実行
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      # コードフォーマットを実行
+      # フォーマットの結果変更が発生した場合はエラー扱いにする
+      - name: Run Flutter format
+        run: flutter format --set-exit-if-changed .
+      # 静的解析を実行
+      - name: Run Flutter Analyze
+        run: flutter analyze
+      # テストを実行
+      # あとでテスト結果を GitHub Actions 上に表示するので log に出力する
+      - name: Run Flutter Test
+        run: flutter test --machine > test-report.log
+      # テスト結果を GitHub Actions に表示する
+      - name: Report Test
+        uses: dorny/test-reporter@v1
+        # テスト結果を表示するのでテストが失敗しても実行する
+        if: always()
+        with:
+          name: Flutter Test Report
+          path: test-report.log
+          reporter: flutter-json
