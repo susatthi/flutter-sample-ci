@@ -1,6 +1,7 @@
-# テスト結果を Codecov に送信する
+# CI の結果を Slack に通知する
 # コードフォーマット => 静的解析 => テスト => レポート => Codecovへ送信
-name: Flutter CI Coverage
+# => Slackに通知
+name: Flutter CI Notify Slack
 
 # ワークフロー起動条件を定義する
 on:
@@ -77,3 +78,33 @@ jobs:
           fail_ci_if_error: true
           flags: unittests
           verbose: true
+
+  # Slack通知ジョブ
+  notify_slack:
+    name: Notify to Slack
+    # 前のジョブの成否によらず常に実行する
+    if: ${{ always() }}
+    # すべてのジョブが終了したら実行する
+    needs:
+      - flutter_test
+    # ジョブを実行するOS
+    runs-on: ubuntu-latest
+    # ここで環境変数を設定すると steps 配下で使えるようになる
+    env:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+    # ジョブの手順
+    steps:
+      # すべて成功したとき
+      - name: Notify Success
+        if: ${{ !contains(needs.*.result, 'failure') }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_TITLE: SUCCESS TEST!
+          SLACK_COLOR: good
+      # テストに失敗したとき
+      - name: Notify Failure Test
+        if: ${{ needs.flutter_test.result == 'failure' }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_TITLE: FAILURE TEST ...
+          SLACK_COLOR: danger
