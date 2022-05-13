@@ -1,0 +1,60 @@
+# 基本バージョン
+# コードフォーマット => 静的解析 => テスト
+name: Flutter CI Basic
+
+# ワークフロー起動条件を定義する
+on:
+  # プルリクエストが作成 or 更新された時
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+  # main ブランチに push された時
+  push:
+    branches:
+      - main
+
+# ジョブを定義する
+# 各ジョブはそれぞれまったく別々の環境で実行される
+jobs:
+  # 最初に実行するテストジョブ
+  flutter_test:
+    # 表示名の定義
+    name: Flutter Test
+    # ジョブを実行するOS
+    runs-on: ubuntu-latest
+    # タイムアウト時間（分）
+    timeout-minutes: 10
+    # ジョブの手順
+    steps:
+      # ソースコードをチェックアウト
+      - name: Checkout
+        uses: actions/checkout@v3
+      # fvm のバージョンとチャネルを環境変数に設定する
+      - name: Check fvm
+        uses: kuhnroyal/flutter-fvm-config-action@v1
+      # Flutter SDK の設定
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          # バージョンとチャネルは fvm の値を使う
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          # 次回以降起動を速くするためにキャッシュしておく
+          cache: true
+          cache-key: flutter
+          cache-path: ${{ runner.tool_cache }}/flutter
+      # flutter pub get を実行
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      # コードフォーマットを実行
+      # フォーマットの結果変更が発生した場合はエラー扱いにする
+      - name: Run Flutter format
+        run: flutter format --set-exit-if-changed .
+      # 静的解析を実行
+      - name: Run Flutter Analyze
+        run: flutter analyze
+      # テストを実行
+      - name: Run Flutter Test
+        run: flutter test
